@@ -1,0 +1,11 @@
+# depslib dependency file v1.0
+1716471884 source:d:\projects\deneme\main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
+1718629620 source:d:\projects\quiz 6 kutuphane sistemi\main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
