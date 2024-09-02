@@ -5,11 +5,13 @@
 #define FILENAME "books.txt"
 #define MAX_LENGTH 100
 #define MAX_NAME_LENGTH 50
+#define MAX_CURRENCY_LENGTH 20
 
 struct Book
 {
     char bookName[MAX_NAME_LENGTH];
     char writerName[MAX_NAME_LENGTH];
+    char currency[MAX_CURRENCY_LENGTH];
     int releaseYear;
     float price;
 };
@@ -21,7 +23,7 @@ void deleteBook(struct Book books[],char *,int *);
 void searchBook(struct Book books[],int,int);
 void clearInputBuffer(void);
 void clearStringBuffer(char *);
-void clearStructBuffer(struct Book *);
+void clearStructBuffer(struct Book *,int);
 
 int main()
 {
@@ -137,7 +139,7 @@ int main()
 
 void clearInputBuffer(void)
 {
-    fflush(stdin);
+    while ((getchar()) != '\n');
 }
 
 void clearStringBuffer(char *buffer)
@@ -147,12 +149,29 @@ void clearStringBuffer(char *buffer)
     buffer[size - 1] = '\0';
 }
 
-void clearStructBuffer(struct Book *book)
+void clearStructBuffer(struct Book *book,int option)
 {
-    int size = strlen(book->bookName);
+    if(option == 1)
+    {
+        int size = strlen(book->bookName);
 
-    if(book->bookName[size - 1] == '\n')
-        book->bookName[size - 1] = '\0';
+        if(book->bookName[size - 1] == '\n')
+            book->bookName[size - 1] = '\0';
+    }
+    else if(option == 2)
+    {
+        int size = strlen(book->writerName);
+
+        if(book->writerName[size - 1] == '\n')
+            book->writerName[size - 1] = '\0';
+    }
+    else
+    {
+        int size = strlen(book->currency);
+
+        if(book->currency[size - 1] == '\n')
+            book->currency[size - 1] = '\0';
+    }
 }
 
 int addArchiveToArray(struct Book books[MAX_LENGTH])
@@ -179,21 +198,21 @@ int addArchiveToArray(struct Book books[MAX_LENGTH])
         {
             strcpy(books[bookCount].bookName,buf + 6);
 
-            clearStructBuffer(&books[bookCount]);
+            clearStructBuffer(&books[bookCount], 1);
         }
 
         else if(check == 1)
         {
             strcpy(books[bookCount].writerName,buf + 8);
 
-            clearStructBuffer(&books[bookCount]);
+            clearStructBuffer(&books[bookCount], 2);
         }
 
         else if(check == 2)
             sscanf(buf,"Release Year: %d",&books[bookCount].releaseYear);
 
         else if(check == 3)
-            sscanf(buf,"Price: %f",&books[bookCount].price);
+            sscanf(buf,"Price: %f %[^\n]",&books[bookCount].price, books[bookCount].currency);
 
         check++;
 
@@ -214,19 +233,33 @@ void addBook(struct Book books[MAX_LENGTH], int bookCount)
     printf("\nBook Name: ");
     fgets(books[bookCount].bookName, sizeof(books[bookCount].bookName), stdin);
 
-    clearStructBuffer(&books[bookCount]);
+    clearStructBuffer(&books[bookCount], 1);
 
     printf("Writer Name: ");
     fgets(books[bookCount].writerName, sizeof(books[bookCount].writerName), stdin);
 
-    int size = strlen(books[bookCount].writerName);
-    books[bookCount].writerName[size - 1] = '\0';
+    clearStructBuffer(&books[bookCount], 2);
 
     printf("Release Year: ");
     scanf("%d", &books[bookCount].releaseYear);
 
     printf("Price: ");
     scanf("%f", &books[bookCount].price);
+
+    while(books[bookCount].price < 0)
+    {
+        printf("Wrong price!Please try again.\n");
+
+        printf("Price: ");
+        scanf("%f", &books[bookCount].price);
+    }
+
+    clearInputBuffer();
+
+    printf("Currency type: ");
+    fgets(books[bookCount].currency, sizeof(books[bookCount].currency), stdin);
+
+    clearStructBuffer(&books[bookCount], 3);
 
     printf("\nThe book added successfully!\n\n");
 
@@ -239,7 +272,7 @@ void addBook(struct Book books[MAX_LENGTH], int bookCount)
     }
 
     fprintf(file,"Book: %s\nWriter: %s\n", books[bookCount].bookName,books[bookCount].writerName);
-    fprintf(file,"Release Year: %d\nPrice: %.2f\n", books[bookCount].releaseYear, books[bookCount].price);
+    fprintf(file,"Release Year: %d\nPrice: %.2f %s\n", books[bookCount].releaseYear, books[bookCount].price, books[bookCount].currency);
     fprintf(file,"--------------------------\n");
 
     fclose(file);
@@ -252,10 +285,9 @@ void listBooks(struct Book books[MAX_LENGTH], int bookCount)
         printf("%d.Book: %s\n\n",k + 1, books[k].bookName);
         printf("Writer: %s\n",books[k].writerName);
         printf("Release Year: %d\n",books[k].releaseYear);
-        printf("Price: %.2f\n",books[k].price);
+        printf("Price: %.2f %s\n",books[k].price, books[k].currency);
         printf("--------------------------\n\n");
     }
-
 }
 
 void deleteBook(struct Book books[MAX_LENGTH], char *bookName2, int *bookCount)
@@ -356,7 +388,7 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
                 printf("\n%d.Book: %s\n\n",k + 1, books[k].bookName);
                 printf("Writer: %s\n\n",books[k].writerName);
                 printf("Release Year: %d\n",books[k].releaseYear);
-                printf("Price: %.2f\n",books[k].price);
+                printf("Price: %.2f %s\n",books[k].price, books[k].currency);
                 printf("--------------------------\n\n");
 
                 check = 1;
@@ -386,7 +418,7 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
                 printf("\n%d.Book: %s\n\n",k + 1, books[k].bookName);
                 printf("Writer: %s\n\n",books[k].writerName);
                 printf("Release Year: %d\n",books[k].releaseYear);
-                printf("Price: %.2f\n",books[k].price);
+                printf("Price: %.2f %s\n",books[k].price, books[k].currency);
                 printf("--------------------------\n\n");
 
                 check = 1;
@@ -418,7 +450,7 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
                 printf("\n%d.Book: %s\n\n",k + 1, books[k].bookName);
                 printf("Writer: %s\n\n",books[k].writerName);
                 printf("Release Year: %d\n",books[k].releaseYear);
-                printf("Price: %.2f\n",books[k].price);
+                printf("Price: %.2f %s\n",books[k].price, books[k].currency);
                 printf("--------------------------\n\n");
 
                 check = 1;
