@@ -1,42 +1,80 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define FILENAME "books.txt"
-#define MAX_LENGTH 100
 #define MAX_NAME_LENGTH 50
 #define MAX_CURRENCY_LENGTH 20
 
-struct Book
+typedef struct
 {
     char bookName[MAX_NAME_LENGTH];
     char writerName[MAX_NAME_LENGTH];
     char currency[MAX_CURRENCY_LENGTH];
     int releaseYear;
     float price;
-};
+} Book;
 
-int addArchiveToArray(struct Book books[]);
-void addBook(struct Book books[],int);
-void listBooks(struct Book books[],int);
-void deleteBook(struct Book books[],char *,int *);
-void searchBook(struct Book books[],int,int);
+int calculateBookCount(void);
+void changeArraySize(Book *books,int);
+void menuOfProgram(Book *books,int);
+void addArchiveToArray(Book *books,int *);
+void addBook(Book *books,int,int *);
+void listBooks(Book *books,int,int,int);
+void deleteBook(Book *books,char *,int *);
+void searchBook(Book *books,int,int);
+void deleteAllBooks(Book *books,int *);
 void clearInputBuffer(void);
 void clearStringBuffer(char *);
-void clearStructBuffer(struct Book *,int);
+void clearStructBuffer(Book *books,int);
+void toUpperCase(char *);
 
 int main()
 {
-    struct Book books[MAX_LENGTH];
-    int choice;
-    int bookCount = 0;
+    int bookCount = calculateBookCount();
 
-    bookCount = addArchiveToArray(books);
+    Book *books = (Book *)malloc( (bookCount + 1) * sizeof(Book) );
+
+    addArchiveToArray(books, &bookCount);
+
+    menuOfProgram(books, bookCount);
+
+    free(books);
+
+    return 0;
+}
+
+int calculateBookCount(void)
+{
+    FILE *file = fopen(FILENAME,"r");
+
+    if(file == NULL)
+        return 0;
+
+    int numberOfLines = 0;
+    char lines[MAX_NAME_LENGTH];
+
+    while(fgets(lines, sizeof(lines), file) != NULL)
+        numberOfLines++;
+
+    return numberOfLines / 5;
+}
+
+void changeArraySize(Book *books, int bookCount)
+{
+    books = (Book *)realloc(books, (bookCount + 1) * sizeof(Book) );
+}
+
+void menuOfProgram(Book *books, int bookCount)
+{
+    int choice;
+    int choice2;
 
     do
     {
         printf("--- Library System ---\n");
-        printf("1. Add book\n2. List all books\n3. Delete book\n4. Search book\n5. Exit");
+        printf("1. Add book\n2. List all books\n3. Delete book\n4. Search book\n5. Delete all books\n6. Exit");
 
         printf("\n\nPlease make a choice: ");
         scanf("%d", &choice);
@@ -50,75 +88,81 @@ int main()
                 printf("\nAdd new book: \n");
                 printf("--------------------------\n");
 
-                addBook(books, bookCount);
-                bookCount++;
+                int bookWarning = 0;
+
+                addBook(books, bookCount, &bookWarning);
+
+                if(bookWarning == 0)
+                    bookCount++;
+
+                changeArraySize(books, bookCount);
 
                 break;
             }
             case 2:
             {
                 printf("\nAll Books: \n");
-                printf("--------------------------\n\n");
+                printf("--------------------------\n");
 
-                listBooks(books, bookCount);
+                listBooks(books, bookCount, 0, 0);
 
                 break;
             }
             case 3:
             {
-                int choice2;
                 char bookName[MAX_NAME_LENGTH];
 
-                do
-                {
-                    printf("\nEnter the name of the book you want to delete: ");
+                printf("\nEnter the name of the book you want to delete: ");
+                fgets(bookName,sizeof(bookName),stdin);
 
-                    fgets(bookName,sizeof(bookName),stdin);
+                clearStringBuffer(bookName);
+                toUpperCase(bookName);
 
-                    clearStringBuffer(bookName);
+                deleteBook(books, bookName, &bookCount);
 
-                    printf("\nAre you sure to delete \"%s\" book?",bookName);
-
-                    printf("\n\nPress 1 (Delete)\nPress 2 (Back to menu): ");
-                    scanf("%d",&choice2);
-
-                    clearInputBuffer();
-                    printf("\n");
-
-                    if(choice2 > 2 || choice2 < 1)
-                        printf("Invalid value! Please try again.\n");
-
-                } while (choice2 > 2 || choice2 < 1);
-
-                if(choice2 == 1)
-                    deleteBook(books, bookName, &bookCount);
+                changeArraySize(books, bookCount);
 
                 break;
             }
             case 4:
             {
-                int choice3;
-
                 do
                 {
                     printf("\nDo you want to search with writer,book name or release year?\n");
 
                     printf("\nPress 1 (Book name)\nPress 2 (Writer name)\nPress 3 (Release year): ");
-                    scanf("%d",&choice3);
+                    scanf("%d",&choice2);
 
                     clearInputBuffer();
                     printf("\n");
 
-                    if(choice3 > 3 || choice3 < 1)
+                    if(choice2 > 3 || choice2 < 1)
                         printf("Invalid value! Please try again.\n");
 
-                } while (choice3 > 3 || choice3 < 1);
+                } while (choice2 > 3 || choice2 < 1);
 
-                searchBook(books, bookCount, choice3);
+                searchBook(books, bookCount, choice2);
 
                 break;
             }
             case 5:
+            {
+                printf("\nAre you completely sure that you want to delete ALL BOOKS?\n");
+
+                printf("\nPress 1 (Delete)\nPress 2 (Back to menu): ");
+                scanf("%d",&choice2);
+
+                clearInputBuffer();
+                printf("\n");
+
+                if(choice2 == 1)
+                    deleteAllBooks(books, &bookCount);
+
+                changeArraySize(books, bookCount);
+
+                break;
+            }
+            case 6:
             {
                 printf("\nProgram is closed.\n");
 
@@ -132,9 +176,13 @@ int main()
             }
         }
 
-    } while (choice != 5);
+    } while (choice != 6);
+}
 
-    return 0;
+void toUpperCase(char *str)//Makes string's all letters to capital letters.
+{
+    for(int i = 0;str[i] != '\0';i++)
+        str[i] = toupper(str[i]);
 }
 
 void clearInputBuffer(void)
@@ -149,7 +197,7 @@ void clearStringBuffer(char *buffer)
     buffer[size - 1] = '\0';
 }
 
-void clearStructBuffer(struct Book *book,int option)
+void clearStructBuffer(Book *book, int option)
 {
     if(option == 1)
     {
@@ -174,9 +222,9 @@ void clearStructBuffer(struct Book *book,int option)
     }
 }
 
-int addArchiveToArray(struct Book books[MAX_LENGTH])
+void addArchiveToArray(Book *books, int *bookCount)
 {
-    int bookCount = 0;
+    int arrayIndex = 0;
 
     FILE *file = fopen(FILENAME,"r");
 
@@ -184,9 +232,13 @@ int addArchiveToArray(struct Book books[MAX_LENGTH])
     {
         printf("There is no any book.Please add a book: \n");
 
-        addBook(books, bookCount);
+        addBook(books, arrayIndex, 0);
 
-        return 1;
+        (*bookCount) = 1;
+
+        changeArraySize(books, 1);
+
+        return;
     }
 
     char buf[MAX_NAME_LENGTH];
@@ -196,49 +248,61 @@ int addArchiveToArray(struct Book books[MAX_LENGTH])
     {
         if(check == 0)
         {
-            strcpy(books[bookCount].bookName,buf + 6);
+            strcpy(books[arrayIndex].bookName,buf + 6);
 
-            clearStructBuffer(&books[bookCount], 1);
+            clearStructBuffer(&books[arrayIndex], 1);
         }
 
         else if(check == 1)
         {
-            strcpy(books[bookCount].writerName,buf + 8);
+            strcpy(books[arrayIndex].writerName,buf + 8);
 
-            clearStructBuffer(&books[bookCount], 2);
+            clearStructBuffer(&books[arrayIndex], 2);
         }
 
         else if(check == 2)
-            sscanf(buf,"Release Year: %d",&books[bookCount].releaseYear);
+            sscanf(buf,"Release Year: %d",&books[arrayIndex].releaseYear);
 
         else if(check == 3)
-            sscanf(buf,"Price: %f %[^\n]",&books[bookCount].price, books[bookCount].currency);
+            sscanf(buf,"Price: %f %[^\n]",&books[arrayIndex].price, books[arrayIndex].currency);
 
         check++;
 
         if(buf[0] == '-')
         {
-            bookCount++;
+            arrayIndex++;
             check = 0;
         }
     }
 
     fclose(file);
-
-    return bookCount;
 }
 
-void addBook(struct Book books[MAX_LENGTH], int bookCount)
+void addBook(Book *books, int bookCount, int *bookWarning)
 {
     printf("\nBook Name: ");
     fgets(books[bookCount].bookName, sizeof(books[bookCount].bookName), stdin);
 
     clearStructBuffer(&books[bookCount], 1);
+    toUpperCase(books[bookCount].bookName);
 
     printf("Writer Name: ");
     fgets(books[bookCount].writerName, sizeof(books[bookCount].writerName), stdin);
 
     clearStructBuffer(&books[bookCount], 2);
+    toUpperCase(books[bookCount].writerName);
+
+    for(int i = 0;i < bookCount;i++)
+    {
+        if(strcmp(books[i].bookName, books[bookCount].bookName) == 0 && strcmp(books[i].writerName, books[bookCount].writerName) == 0)
+        {
+            printf("\nThis book is already exist!.If you want to add new one please try again.\n\n");
+
+            (*bookWarning) = 1;
+
+            return;
+        }
+    }
 
     printf("Release Year: ");
     scanf("%d", &books[bookCount].releaseYear);
@@ -260,6 +324,7 @@ void addBook(struct Book books[MAX_LENGTH], int bookCount)
     fgets(books[bookCount].currency, sizeof(books[bookCount].currency), stdin);
 
     clearStructBuffer(&books[bookCount], 3);
+    toUpperCase(books[bookCount].currency);
 
     printf("\nThe book added successfully!\n\n");
 
@@ -278,25 +343,42 @@ void addBook(struct Book books[MAX_LENGTH], int bookCount)
     fclose(file);
 }
 
-void listBooks(struct Book books[MAX_LENGTH], int bookCount)
+void listBooks(Book *books, int bookCount, int i, int control)
 {
-    for(int k = 0;k < bookCount;k++)
+    if(control == 0)
     {
-        printf("%d.Book: %s\n\n",k + 1, books[k].bookName);
-        printf("Writer: %s\n",books[k].writerName);
-        printf("Release Year: %d\n",books[k].releaseYear);
-        printf("Price: %.2f %s\n",books[k].price, books[k].currency);
+        int k;
+
+        for(k = 0;k < bookCount;k++)
+        {
+            printf("\n%d.Book: %s\n\n",k + 1, books[k].bookName);
+            printf("Writer: %s\n",books[k].writerName);
+            printf("Release Year: %d\n",books[k].releaseYear);
+            printf("Price: %.2f %s\n",books[k].price, books[k].currency);
+            printf("--------------------------\n\n");
+        }
+
+        if(k == 0)
+            printf("There are no any books.\n\n");
+    }
+    else
+    {
+        printf("\n%d.Book: %s\n\n",i + 1, books[i].bookName);
+        printf("Writer: %s\n",books[i].writerName);
+        printf("Release Year: %d\n",books[i].releaseYear);
+        printf("Price: %.2f %s\n",books[i].price, books[i].currency);
         printf("--------------------------\n\n");
     }
+
 }
 
-void deleteBook(struct Book books[MAX_LENGTH], char *bookName2, int *bookCount)
+void deleteBook(Book *books, char *bookName2, int *bookCount)
 {
     int control = 0;
 
-    for(int k = 0;k < *bookName2;k++)
+    for(int k = 0;k < *bookCount;k++)
     {
-        if(strstr(books[k].bookName,bookName2) != NULL)
+        if(strcmp(books[k].bookName, bookName2) == 0)
         {
             control = 1;
             break;
@@ -305,6 +387,62 @@ void deleteBook(struct Book books[MAX_LENGTH], char *bookName2, int *bookCount)
 
     if(control == 1)
     {
+        int count = 0;
+        int tempBookCount = *bookCount;
+
+        for(int k = 0;k < tempBookCount;k++)
+        {
+            if(strcmp(books[k].bookName, bookName2) == 0)
+            {
+                count++;
+
+                listBooks(books, tempBookCount, k, 1);
+            }
+        }
+
+        char writerName2[MAX_NAME_LENGTH];//we use this string and count variable if there are books with same names.
+
+        if(count > 1)
+        {
+            printf("\nPlease enter the name of the author for delete: ");
+            fgets(writerName2, sizeof(writerName2), stdin);
+
+            clearStringBuffer(writerName2);
+            toUpperCase(writerName2);
+
+            printf("--------------------------\n");
+        }
+
+        if(count > 1)
+            printf("\nAre you sure you want to delete \"%s/%s\" book?",bookName2, writerName2);
+        else
+            printf("\nAre you sure you want to delete \"%s\" book?",bookName2);
+
+
+        int choice;
+
+        printf("\n\nPress 1 (Delete)\nPress 2 (Back to menu): ");
+        scanf("%d",&choice);
+
+        clearInputBuffer();
+
+        printf("\n");
+
+        if(choice == 2)
+            return;
+
+        while(choice != 1 && choice != 2)
+        {
+            printf("Invalid choice.Please try again.");
+
+            printf("\n\nPress 1 (Delete)\nPress 2 (Back to menu): ");
+            scanf("%d",&choice);
+
+            clearInputBuffer();
+
+            printf("\n");
+        }
+
         FILE *file = fopen(FILENAME,"r");
         FILE *tempFile = fopen("temp.txt","w");
 
@@ -315,45 +453,92 @@ void deleteBook(struct Book books[MAX_LENGTH], char *bookName2, int *bookCount)
         }
 
         char buf[MAX_NAME_LENGTH];
-        int check = 0;
+        char buf2[MAX_NAME_LENGTH];
+        char currentBuf[MAX_NAME_LENGTH];
+        int book_check = 0;
         int check2 = 0;
         int index = 0;
+        int index_check = 0;
+        int index_check2 = 0;
+        int count2 = 0;
 
-        while(fgets(buf,sizeof(buf),file) != NULL)//Deletes from file.
+        while(fgets(buf, sizeof(buf), file) != NULL)//Deletes from file.
         {
             if(strstr(buf,"Book: ") != NULL)
             {
-                if(strstr(buf,bookName2) != NULL)
+                strcpy(currentBuf, buf + 6);
+
+                clearStringBuffer(currentBuf);
+
+                if(strcmp(currentBuf, bookName2) == 0)
                 {
-                    check = 1;
-                    check2 = 1;
+                    book_check = 1;
+                    index_check2 = 1;
                 }
 
                 else
-                    check = 0;
+                    book_check = 0;
             }
 
-            if(buf[0] == '-' && check2 == 0)//Index for struct array.
+            if(count > 1 && book_check == 1)//Deletes from file if there are multiple books with same names.
+            {
+                strcpy(buf2, buf);
+
+                if(check2 == 0)
+                    fgets(buf, sizeof(buf), file);
+
+                if(strstr(buf,"Writer: ") != NULL && strstr(buf, writerName2) != NULL)
+                {
+                    check2 = 1;
+                    index_check = 1;
+                }
+
+                else if(check2 == 1)
+                    count2++;
+                else
+                {
+                    book_check = 0;
+                    fprintf(tempFile,"%s", buf2);
+                }
+
+                if(count2 == 3)
+                {
+                    check2 = 0;
+                    count2 = 0;
+                }
+            }
+
+            if(buf[0] == '-' && count > 1 && index_check == 0)//Index for struct array.If there are multiple books with same names.
                 index++;
 
-            if(check == 0)
-                fprintf(tempFile,"%s",buf);
+            if(buf[0] == '-' && count == 1 && index_check2 == 0)//Index for struct array.If there is one book.
+                index++;
 
-            else
-            {
-                if(buf[0] == '-')
-                    check = 0;
-            }
+            if(book_check == 0)
+                fprintf(tempFile,"%s", buf);
         }
 
         fclose(file);
         fclose(tempFile);
 
-        remove(FILENAME);
+        char line[MAX_NAME_LENGTH];
 
-        rename("temp.txt",FILENAME);
+        file = fopen(FILENAME, "w");
+        tempFile = fopen("temp.txt", "r");
 
-        for(int k = index;k < *bookCount - 1;k++)//Deletes from struct array
+        if (file == NULL || tempFile == NULL)
+        {
+            printf("\nNo such file or directory!\n");
+            exit(1);
+        }
+
+        while (fgets(line, sizeof(line), tempFile))
+            fputs(line, file);
+
+        fclose(file);
+        fclose(tempFile);
+
+        for(int k = index;k < (*bookCount) - 1;k++)//Deletes from struct array
             books[k] = books[k + 1];
 
         (*bookCount)--;
@@ -362,10 +547,10 @@ void deleteBook(struct Book books[MAX_LENGTH], char *bookName2, int *bookCount)
     }
 
     else
-        printf("There is no such book.\n\n");
+        printf("\nThere is no such book.\n\n");
 }
 
-void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
+void searchBook(Book *books, int bookCount, int choice)
 {
     int check = 0;
 
@@ -374,10 +559,10 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
         char bookName1[MAX_NAME_LENGTH];
 
         printf("\nEnter the name of the book you want to search: ");
-
         fgets(bookName1,sizeof(bookName1),stdin);
 
         clearStringBuffer(bookName1);
+        toUpperCase(bookName1);
 
         printf("--------------------------\n");
 
@@ -385,11 +570,7 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
         {
             if(strstr(books[k].bookName,bookName1) != NULL)
             {
-                printf("\n%d.Book: %s\n\n",k + 1, books[k].bookName);
-                printf("Writer: %s\n\n",books[k].writerName);
-                printf("Release Year: %d\n",books[k].releaseYear);
-                printf("Price: %.2f %s\n",books[k].price, books[k].currency);
-                printf("--------------------------\n\n");
+                listBooks(books, bookCount, k, 1);
 
                 check = 1;
             }
@@ -404,10 +585,10 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
         char writerName1[MAX_NAME_LENGTH];
 
         printf("\nEnter the name of the author of the book you want to search: ");
-
         fgets(writerName1,sizeof(writerName1),stdin);
 
         clearStringBuffer(writerName1);
+        toUpperCase(writerName1);
 
         printf("--------------------------\n");
 
@@ -415,11 +596,7 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
         {
             if(strstr(books[k].writerName,writerName1) != NULL)
             {
-                printf("\n%d.Book: %s\n\n",k + 1, books[k].bookName);
-                printf("Writer: %s\n\n",books[k].writerName);
-                printf("Release Year: %d\n",books[k].releaseYear);
-                printf("Price: %.2f %s\n",books[k].price, books[k].currency);
-                printf("--------------------------\n\n");
+                listBooks(books, bookCount, k, 1);
 
                 check = 1;
             }
@@ -447,11 +624,7 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
         {
             if(books[k].releaseYear >= firstY && books[k].releaseYear <= secondY)
             {
-                printf("\n%d.Book: %s\n\n",k + 1, books[k].bookName);
-                printf("Writer: %s\n\n",books[k].writerName);
-                printf("Release Year: %d\n",books[k].releaseYear);
-                printf("Price: %.2f %s\n",books[k].price, books[k].currency);
-                printf("--------------------------\n\n");
+                listBooks(books, bookCount, k, 1);
 
                 check = 1;
             }
@@ -460,4 +633,24 @@ void searchBook(struct Book books[MAX_LENGTH], int bookCount, int choice)
         if(check == 0)
             printf("\nThere is no such book for this release year range.\n\n");
     }
+}
+
+void deleteAllBooks(Book *books, int *bookCount)
+{
+    FILE *file = fopen(FILENAME,"w");
+    FILE *tempFile = fopen("temp.txt","w");
+
+    if(file == NULL || tempFile == NULL)
+    {
+        printf("\nNo such file or directory!\n");
+    }
+
+    fclose(file);
+    fclose(tempFile);
+
+    memset(books, 0, (*bookCount) * sizeof(Book));
+
+    (*bookCount) = 0;
+
+    printf("All books deleted succesfully.\n\n");
 }
