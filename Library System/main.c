@@ -51,6 +51,8 @@ int main()
 
     menuOfProgram(books, bookCount);
 
+    books = (Book *)calloc(0, (bookCount + 1) * sizeof(Book));
+
     free(books);
 
     return 0;
@@ -793,7 +795,7 @@ void deleteAllBooks(Book* books, int* bookCount)
     fclose(file);
     fclose(tempFile);
 
-    memset(books, 0, (*bookCount) * sizeof(Book));
+    memset(books, 0, (*bookCount + 1) * sizeof(Book));
 
     (*bookCount) = 0;
 
